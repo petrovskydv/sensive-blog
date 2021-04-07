@@ -26,14 +26,11 @@ def serialize_tag(tag):
 
 
 def index(request):
-    tags = Tag.objects.annotate(posts_count=Count('posts')).all()
     most_popular_posts = Post.objects.popular()[:5].prefetch_related(
-        'author', Prefetch('tags', queryset=tags)
-    ).fetch_with_comments_count()
+        'author').prefetch_tags().fetch_with_comments_count()
 
     fresh_posts = Post.objects.annotate(comments_count=Count('comments')).prefetch_related(
-        'author', Prefetch('tags', queryset=tags)
-    ).order_by('-published_at')
+        'author').prefetch_tags().order_by('-published_at')
 
     most_fresh_posts = list(fresh_posts)[:5]
 
@@ -48,6 +45,7 @@ def index(request):
 
 
 def post_detail(request, slug):
+    # TODO обработать DoesNotExist
     post = Post.objects.select_related('author').annotate(likes_count=Count('likes')).get(slug=slug)
     comments = Comment.objects.select_related('author').filter(post=post)
     serialized_comments = []
@@ -74,10 +72,8 @@ def post_detail(request, slug):
 
     most_popular_tags = Tag.objects.annotate(posts_count=Count('posts')).popular()[:5]
 
-    tags = Tag.objects.annotate(posts_count=Count('posts')).all()
     most_popular_posts = Post.objects.popular()[:5].prefetch_related(
-        'author', Prefetch('tags', queryset=tags)
-    ).fetch_with_comments_count()
+        'author').prefetch_tags().fetch_with_comments_count()
 
     context = {
         'post': serialized_post,
@@ -88,18 +84,16 @@ def post_detail(request, slug):
 
 
 def tag_filter(request, tag_title):
+    # TODO обработать DoesNotExist
     tag = Tag.objects.get(title=tag_title)
 
     most_popular_tags = Tag.objects.annotate(posts_count=Count('posts')).popular()[:5]
 
-    tags = Tag.objects.annotate(posts_count=Count('posts')).all()
     most_popular_posts = Post.objects.popular()[:5].prefetch_related(
-        'author', Prefetch('tags', queryset=tags)
-    ).fetch_with_comments_count()
+        'author').prefetch_tags().fetch_with_comments_count()
 
     related_posts = tag.posts.all()[:20].prefetch_related(
-        'author', Prefetch('tags', queryset=tags)
-    ).fetch_with_comments_count()
+        'author').prefetch_tags().fetch_with_comments_count()
 
     context = {
         "tag": tag.title,
